@@ -18,7 +18,12 @@ export function useEscrowBalance(contractId: string) {
   });
 }
 
-async function depositEscrow(params: { contractId: string; amount: string; asset: string; publicKey: string }) {
+async function depositEscrow(params: {
+  contractId: string;
+  amount: string;
+  asset: string;
+  publicKey: string;
+}) {
   const response = await fetch('/api/escrow/deposit', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -28,7 +33,12 @@ async function depositEscrow(params: { contractId: string; amount: string; asset
   return response.json();
 }
 
-async function withdrawEscrow(params: { contractId: string; amount: string; asset: string; publicKey: string }) {
+async function withdrawEscrow(params: {
+  contractId: string;
+  amount: string;
+  asset: string;
+  publicKey: string;
+}) {
   const response = await fetch('/api/escrow/withdraw', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -43,7 +53,12 @@ export function useEscrowContract(contractId: string) {
 
   const depositMutation = useMutation({
     mutationFn: depositEscrow,
-    onMutate: async (params: { contractId: string; amount: string; asset: string; publicKey: string }) => {
+    onMutate: async (params: {
+      contractId: string;
+      amount: string;
+      asset: string;
+      publicKey: string;
+    }) => {
       await queryClient.cancelQueries({ queryKey: ['escrowBalance', contractId] });
       const previous = queryClient.getQueryData<EscrowBalance>(['escrowBalance', contractId]);
       if (previous) {
@@ -56,7 +71,11 @@ export function useEscrowContract(contractId: string) {
       }
       return { previous };
     },
-    onError: (_err: Error, _params: { contractId: string; amount: string; asset: string; publicKey: string }, context: { previous: EscrowBalance | undefined } | undefined) => {
+    onError: (
+      _err: Error,
+      _params: { contractId: string; amount: string; asset: string; publicKey: string },
+      context: { previous: EscrowBalance | undefined } | undefined,
+    ) => {
       if (context?.previous) {
         queryClient.setQueryData(['escrowBalance', contractId], context.previous);
       }
@@ -68,7 +87,12 @@ export function useEscrowContract(contractId: string) {
 
   const withdrawMutation = useMutation({
     mutationFn: withdrawEscrow,
-    onMutate: async (params: { contractId: string; amount: string; asset: string; publicKey: string }) => {
+    onMutate: async (params: {
+      contractId: string;
+      amount: string;
+      asset: string;
+      publicKey: string;
+    }) => {
       await queryClient.cancelQueries({ queryKey: ['escrowBalance', contractId] });
       const previous = queryClient.getQueryData<EscrowBalance>(['escrowBalance', contractId]);
       if (previous) {
@@ -81,7 +105,11 @@ export function useEscrowContract(contractId: string) {
       }
       return { previous };
     },
-    onError: (_err: Error, _params: { contractId: string; amount: string; asset: string; publicKey: string }, context: { previous: EscrowBalance | undefined } | undefined) => {
+    onError: (
+      _err: Error,
+      _params: { contractId: string; amount: string; asset: string; publicKey: string },
+      context: { previous: EscrowBalance | undefined } | undefined,
+    ) => {
       if (context?.previous) {
         queryClient.setQueryData(['escrowBalance', contractId], context.previous);
       }

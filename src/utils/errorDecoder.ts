@@ -1,16 +1,17 @@
 const STELLAR_ERROR_MAP: Record<string, string> = {
-  'tx_bad_seq': 'Transaction sequence number mismatch. Refresh your wallet and try again.',
-  'tx_insufficient_fee': 'Network fees are too low for current congestion. Increase the fee budget.',
-  'tx_failed': 'Transaction execution failed on the Soroban network. Check contract parameters.',
-  'tx_too_late': 'Transaction submission timed out. The network slot has expired.',
-  'op_underfunded': 'Insufficient balance for this operation, including required fees.',
-  'op_low_reserve': 'Insufficient native asset reserve. Maintain minimum XLM balance.',
-  'op_malformed': 'Operation parameters are malformed. Verify all inputs before retrying.',
-  'op_bad_auth': 'Authorization verification failed. Wallet keys may not match the signer.',
-  'contract_not_found': 'The target Soroban contract was not found on this network. Verify contract ID.',
-  'contract_error': 'The Soroban contract returned an error during execution. Check contract logs.',
-  'fee_insufficient': 'The fee submitted is below the network minimum for this transaction type.',
-  'bad_sponsorship': 'Sponsorship configuration is invalid. Contact your contract administrator.',
+  tx_bad_seq: 'Transaction sequence number mismatch. Refresh your wallet and try again.',
+  tx_insufficient_fee: 'Network fees are too low for current congestion. Increase the fee budget.',
+  tx_failed: 'Transaction execution failed on the Soroban network. Check contract parameters.',
+  tx_too_late: 'Transaction submission timed out. The network slot has expired.',
+  op_underfunded: 'Insufficient balance for this operation, including required fees.',
+  op_low_reserve: 'Insufficient native asset reserve. Maintain minimum XLM balance.',
+  op_malformed: 'Operation parameters are malformed. Verify all inputs before retrying.',
+  op_bad_auth: 'Authorization verification failed. Wallet keys may not match the signer.',
+  contract_not_found:
+    'The target Soroban contract was not found on this network. Verify contract ID.',
+  contract_error: 'The Soroban contract returned an error during execution. Check contract logs.',
+  fee_insufficient: 'The fee submitted is below the network minimum for this transaction type.',
+  bad_sponsorship: 'Sponsorship configuration is invalid. Contact your contract administrator.',
 };
 
 const RPC_ERROR_MAP: Record<string, string> = {

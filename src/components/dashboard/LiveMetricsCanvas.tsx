@@ -64,7 +64,11 @@ export function LiveMetricsCanvas({ stream, metrics, height = 300 }: LiveMetrics
       points.forEach((p, i) => {
         const x = padding + (i / (points.length - 1)) * (w - 2 * padding);
         const y = h - padding - ((p.v - min) / range) * (h - 2 * padding);
-        if (i === 0) { ctx.moveTo(x, y); } else { ctx.lineTo(x, y); }
+        if (i === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
       });
 
       ctx.stroke();

@@ -77,7 +77,11 @@ export function TelemetryChart({
     batchedData.forEach((point, i) => {
       const x = padding + (i / (batchedData.length - 1)) * (width - 2 * padding);
       const y = height - padding - ((point.value - min) / range) * (height - 2 * padding);
-      if (i === 0) { ctx.moveTo(x, y); } else { ctx.lineTo(x, y); }
+      if (i === 0) {
+        ctx.moveTo(x, y);
+      } else {
+        ctx.lineTo(x, y);
+      }
     });
     ctx.stroke();
 
@@ -90,5 +94,7 @@ export function TelemetryChart({
     draw();
   }, [draw]);
 
-  return <canvas ref={canvasRef} style={{ width, height }} aria-label={`${metric} telemetry chart`} />;
+  return (
+    <canvas ref={canvasRef} style={{ width, height }} aria-label={`${metric} telemetry chart`} />
+  );
 }

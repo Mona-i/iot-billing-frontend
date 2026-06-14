@@ -42,7 +42,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     const response = await fetch(`/api/wallet/balances?publicKey=${pk}`);
     if (response.ok) {
       const balances: AssetBalance[] = await response.json();
-      setMetrics((prev) => prev ? { ...prev, balances } : null);
+      setMetrics((prev) => (prev ? { ...prev, balances } : null));
     }
   }, []);
 
@@ -89,7 +89,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   }, [abortController]);
 
   return (
-    <WalletContext.Provider value={{ metrics, isConnecting, error, connect, disconnect, refreshBalances }}>
+    <WalletContext.Provider
+      value={{ metrics, isConnecting, error, connect, disconnect, refreshBalances }}
+    >
       {children}
     </WalletContext.Provider>
   );

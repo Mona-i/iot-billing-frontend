@@ -17,11 +17,25 @@ export default function manifest(): MetadataRoute.Manifest {
     icons: [
       { src: '/icon-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
       { src: '/icon-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
-      { src: '/icon-192x192-maskable.png', sizes: '192x192', type: 'image/png', purpose: 'maskable' },
-      { src: '/icon-512x512-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+      {
+        src: '/icon-192x192-maskable.png',
+        sizes: '192x192',
+        type: 'image/png',
+        purpose: 'maskable',
+      },
+      {
+        src: '/icon-512x512-maskable.png',
+        sizes: '512x512',
+        type: 'image/png',
+        purpose: 'maskable',
+      },
     ],
     shortcuts: [
-      { name: 'Dashboard', url: '/dashboard', icons: [{ src: '/icon-192x192.png', sizes: '192x192' }] },
+      {
+        name: 'Dashboard',
+        url: '/dashboard',
+        icons: [{ src: '/icon-192x192.png', sizes: '192x192' }],
+      },
       { name: 'Escrow', url: '/escrow', icons: [{ src: '/icon-192x192.png', sizes: '192x192' }] },
     ],
   };

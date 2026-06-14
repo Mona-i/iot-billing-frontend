@@ -8,7 +8,10 @@ export function fromSorobanInt(raw: string | bigint, decimals: number = SOROBAN_
   return value.div(divisor).toFixed(decimals, BigNumber.ROUND_HALF_UP);
 }
 
-export function toSorobanInt(display: string | number, decimals: number = SOROBAN_DECIMALS): string {
+export function toSorobanInt(
+  display: string | number,
+  decimals: number = SOROBAN_DECIMALS,
+): string {
   const value = new BigNumber(display);
   const multiplier = new BigNumber(10).pow(decimals);
   return value.times(multiplier).integerValue(BigNumber.ROUND_HALF_UP).toString();

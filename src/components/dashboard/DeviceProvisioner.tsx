@@ -65,9 +65,7 @@ export function DeviceProvisioner({ walletAddress, onComplete }: DeviceProvision
               </div>
             </div>
           </div>
-          <p className="text-center text-xs text-gray-500">
-            Session: {sessionId.slice(0, 12)}...
-          </p>
+          <p className="text-center text-xs text-gray-500">Session: {sessionId.slice(0, 12)}...</p>
         </div>
       )}
 

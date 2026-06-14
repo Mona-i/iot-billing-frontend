@@ -36,9 +36,7 @@ export function FleetCanvasGrid({ fleets, cellSize = 80 }: FleetCanvasGridProps)
       const y = row * cellSize;
 
       const statusColor =
-        fleet.status === 'active' ? '#00ff88' :
-        fleet.status === 'degraded' ? '#ffaa00' :
-        '#ff4444';
+        fleet.status === 'active' ? '#00ff88' : fleet.status === 'degraded' ? '#ffaa00' : '#ff4444';
 
       ctx.fillStyle = '#1a1a2e';
       ctx.fillRect(x, y, cellSize - 2, cellSize - 2);

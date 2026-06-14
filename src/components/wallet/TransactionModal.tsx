@@ -75,7 +75,7 @@ export function TransactionModal({
         onComplete?.(data.hash as string);
       } else {
         const errData = await response.json().catch(() => ({}));
-        setTxError(decodeError(errData.error as string ?? response.statusText));
+        setTxError(decodeError((errData.error as string) ?? response.statusText));
       }
     } catch (err) {
       setTxError(decodeError(err instanceof Error ? err.message : 'Unknown error'));
@@ -114,7 +114,8 @@ export function TransactionModal({
 
           {gasEstimate && (
             <div className="rounded bg-gray-800 p-2 text-xs text-gray-400">
-              Estimated fee: <span className="font-mono text-green-400">{formatCurrency(gasEstimate)} XLM</span>
+              Estimated fee:{' '}
+              <span className="font-mono text-green-400">{formatCurrency(gasEstimate)} XLM</span>
             </div>
           )}
         </div>

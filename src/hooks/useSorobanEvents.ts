@@ -36,7 +36,7 @@ export function useSorobanEvents(filter?: EventFilter) {
 
   useEffect(() => {
     let flushInterval: ReturnType<typeof setInterval>;
-    const parsed = filterKey ? JSON.parse(filterKey) as EventFilter | undefined : undefined;
+    const parsed = filterKey ? (JSON.parse(filterKey) as EventFilter | undefined) : undefined;
     const connect = () => {
       const wsUrl = process.env.NEXT_PUBLIC_SOROBAN_WS_URL ?? 'ws://localhost:8000/events';
       const ws = new WebSocket(wsUrl);

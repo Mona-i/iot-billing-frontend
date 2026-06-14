@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { fromSorobanInt, toSorobanInt, formatCurrency, formatCompact, compareBalances } from './currencyFormatter';
+import {
+  fromSorobanInt,
+  toSorobanInt,
+  formatCurrency,
+  formatCompact,
+  compareBalances,
+} from './currencyFormatter';
 
 describe('fromSorobanInt', () => {
   it('converts raw Soroban integer to decimal string', () => {

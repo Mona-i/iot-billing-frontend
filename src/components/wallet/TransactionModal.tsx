@@ -3,7 +3,28 @@
 import { useState } from 'react';
 import { useWallet } from '@/components/providers/WalletProvider';
 import { formatCurrency } from '@/utils/currencyFormatter';
-import { decodeError } from '@/utils/errorDecoder';
+import { ErrorDecoder } from '@/utils/errorDecoder';
+
+function ErrorBanner({ decoded, raw }: { decoded: string; raw: string }) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className="mt-3 rounded bg-red-900/30 p-2 text-xs text-red-400">
+      <div>{decoded}</div>
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="mt-1 text-[10px] text-red-500 underline hover:text-red-300"
+      >
+        {expanded ? 'Hide details' : 'Details'}
+      </button>
+      {expanded && (
+        <div className="mt-1 break-all rounded bg-red-950/40 p-1.5 font-mono text-[10px] text-red-300">
+          {raw}
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface TransactionModalProps {
   type: 'escrow_deposit' | 'escrow_withdrawal';
@@ -12,6 +33,8 @@ interface TransactionModalProps {
   onComplete?: (hash: string) => void;
   onClose: () => void;
 }
+
+const errorDecoder = new ErrorDecoder();
 
 export function TransactionModal({
   type,
@@ -25,7 +48,7 @@ export function TransactionModal({
   const [gasEstimate, setGasEstimate] = useState<string | null>(null);
   const [estimating, setEstimating] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [txError, setTxError] = useState<string | null>(null);
+  const [txError, setTxError] = useState<{ decoded: string; raw: string } | null>(null);
 
   const isDeposit = type === 'escrow_deposit';
 
@@ -75,10 +98,12 @@ export function TransactionModal({
         onComplete?.(data.hash as string);
       } else {
         const errData = await response.json().catch(() => ({}));
-        setTxError(decodeError((errData.error as string) ?? response.statusText));
+        const raw = (errData.error as string) ?? response.statusText;
+        setTxError({ decoded: errorDecoder.tryDecode(raw), raw });
       }
     } catch (err) {
-      setTxError(decodeError(err instanceof Error ? err.message : 'Unknown error'));
+      const raw = err instanceof Error ? err.message : 'Unknown error';
+      setTxError({ decoded: errorDecoder.tryDecode(raw), raw });
     } finally {
       setSubmitting(false);
     }
@@ -120,9 +145,7 @@ export function TransactionModal({
           )}
         </div>
 
-        {txError && (
-          <div className="mt-3 rounded bg-red-900/30 p-2 text-xs text-red-400">{txError}</div>
-        )}
+        {txError && <ErrorBanner decoded={txError.decoded} raw={txError.raw} />}
 
         <div className="mt-5 flex gap-2">
           <button

@@ -45,16 +45,19 @@ export function preAggregateFleetData(fleets: FleetView[]): FleetView[] {
     return fleets;
   }
 
-  const regionsMap = new Map<string, {
-    fleetId: string;
-    name: string;
-    deviceCount: number;
-    activeCount: number;
-    totalPowerOutput: number;
-    activeFleets: number;
-    degradedFleets: number;
-    inactiveFleets: number;
-  }>();
+  const regionsMap = new Map<
+    string,
+    {
+      fleetId: string;
+      name: string;
+      deviceCount: number;
+      activeCount: number;
+      totalPowerOutput: number;
+      activeFleets: number;
+      degradedFleets: number;
+      inactiveFleets: number;
+    }
+  >();
 
   const getRegion = (fleet: FleetView) => {
     const regionFleet = fleet as FleetView & { region?: string };
@@ -66,7 +69,13 @@ export function preAggregateFleetData(fleets: FleetView[]): FleetView[] {
     if (nameParts.length > 1 && firstPart.length >= 2 && firstPart.length <= 5) {
       return firstPart;
     }
-    const regions: string[] = ['North America', 'Europe', 'Asia-Pacific', 'South America', 'Africa'];
+    const regions: string[] = [
+      'North America',
+      'Europe',
+      'Asia-Pacific',
+      'South America',
+      'Africa',
+    ];
     let hash = 0;
     for (let i = 0; i < fleet.fleetId.length; i++) {
       hash = fleet.fleetId.charCodeAt(i) + ((hash << 5) - hash);

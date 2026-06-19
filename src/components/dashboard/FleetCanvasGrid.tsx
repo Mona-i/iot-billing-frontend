@@ -49,7 +49,12 @@ export function FleetCanvasGrid({ fleets, cellSize = 80 }: FleetCanvasGridProps)
   const [zoomLevel, setZoomLevel] = useState(1.0);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [visibleCells, setVisibleCells] = useState<PositionResult[]>([]);
-  const [viewportBounds, setViewportBounds] = useState({ xMin: 0, yMin: 0, xMax: 1000, yMax: 1000 });
+  const [viewportBounds, setViewportBounds] = useState({
+    xMin: 0,
+    yMin: 0,
+    xMax: 1000,
+    yMax: 1000,
+  });
 
   // Memory estimation & check
   const memoryUsage = estimateGridMemory(fleets);
@@ -62,15 +67,18 @@ export function FleetCanvasGrid({ fleets, cellSize = 80 }: FleetCanvasGridProps)
       return fleets;
     }
 
-    const regionsMap = new Map<string, {
-      fleetCount: number;
-      deviceCount: number;
-      activeCount: number;
-      totalPowerOutput: number;
-      activeFleets: number;
-      degradedFleets: number;
-      inactiveFleets: number;
-    }>();
+    const regionsMap = new Map<
+      string,
+      {
+        fleetCount: number;
+        deviceCount: number;
+        activeCount: number;
+        totalPowerOutput: number;
+        activeFleets: number;
+        degradedFleets: number;
+        inactiveFleets: number;
+      }
+    >();
 
     fleets.forEach((fleet) => {
       const region = getFleetRegion(fleet);
@@ -125,13 +133,13 @@ export function FleetCanvasGrid({ fleets, cellSize = 80 }: FleetCanvasGridProps)
   // Initialize Web Worker
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    
+
     try {
       workerRef.current = new Worker(
         new URL('../../workers/fleetPosition.worker.ts', import.meta.url),
-        { type: 'module' }
+        { type: 'module' },
       );
-      
+
       workerRef.current.onmessage = (e: MessageEvent<PositionResult[]>) => {
         setVisibleCells(e.data);
       };
@@ -199,11 +207,11 @@ export function FleetCanvasGrid({ fleets, cellSize = 80 }: FleetCanvasGridProps)
   // Handle scroll / resize to update viewport bounds
   useEffect(() => {
     updateViewport();
-    
+
     // Capture events on window to detect scrolling of any parent container
     window.addEventListener('scroll', updateViewport, { capture: true, passive: true });
     window.addEventListener('resize', updateViewport, { passive: true });
-    
+
     return () => {
       window.removeEventListener('scroll', updateViewport, { capture: true });
       window.removeEventListener('resize', updateViewport);
@@ -218,13 +226,13 @@ export function FleetCanvasGrid({ fleets, cellSize = 80 }: FleetCanvasGridProps)
     if (!ctx) return;
 
     const dpr = window.devicePixelRatio || 1;
-    
+
     // Set device pixel ratio and sizes once per frame
     if (canvas.width !== width * dpr || canvas.height !== height * dpr) {
       canvas.width = width * dpr;
       canvas.height = height * dpr;
     }
-    
+
     ctx.resetTransform();
     ctx.scale(dpr, dpr);
 
@@ -236,7 +244,10 @@ export function FleetCanvasGrid({ fleets, cellSize = 80 }: FleetCanvasGridProps)
     ctx.fillRect(xMin, yMin, xMax - xMin, yMax - yMin);
 
     // Group cells by status color to minimize fillStyle/strokeStyle context changes
-    const cellsByColor: Record<string, { cell: PositionResult; fleet: DisplayFleet; isHovered: boolean }[]> = {
+    const cellsByColor: Record<
+      string,
+      { cell: PositionResult; fleet: DisplayFleet; isHovered: boolean }[]
+    > = {
       '#00ff88': [], // Active
       '#ffaa00': [], // Degraded
       '#ff4444': [], // Inactive
@@ -247,7 +258,7 @@ export function FleetCanvasGrid({ fleets, cellSize = 80 }: FleetCanvasGridProps)
       if (!fleet) return;
 
       const isHovered = cell.index === hoveredIndex;
-      
+
       // Draw highlighted/active background if needed
       if (isHovered) {
         ctx.fillStyle = '#252542';
@@ -271,11 +282,11 @@ export function FleetCanvasGrid({ fleets, cellSize = 80 }: FleetCanvasGridProps)
       if (list.length === 0) return;
 
       ctx.strokeStyle = color;
-      
+
       // Pass 1: Borders and main text fields (using bold 10px monospace)
       ctx.fillStyle = color;
       ctx.font = isAggregated ? 'bold 12px monospace' : 'bold 10px monospace';
-      
+
       list.forEach(({ cell, fleet, isHovered }) => {
         ctx.lineWidth = isHovered ? 2 : 1;
         ctx.strokeRect(cell.x, cell.y, currentCellSize - 2, currentCellSize - 2);
@@ -283,14 +294,15 @@ export function FleetCanvasGrid({ fleets, cellSize = 80 }: FleetCanvasGridProps)
         // Header name
         const textYOffset = isAggregated ? 18 : 14;
         const lineSpacing = isAggregated ? 16 : 14;
-        
+
         ctx.fillText(fleet.name.slice(0, isAggregated ? 12 : 8), cell.x + 6, cell.y + textYOffset);
-        
+
         // Count string
-        const countText = (isAggregated && fleet.fleetCount !== undefined)
-          ? `${fleet.fleetCount} fleets`
-          : `${fleet.activeCount}/${fleet.deviceCount}`;
-        
+        const countText =
+          isAggregated && fleet.fleetCount !== undefined
+            ? `${fleet.fleetCount} fleets`
+            : `${fleet.activeCount}/${fleet.deviceCount}`;
+
         ctx.fillText(countText, cell.x + 6, cell.y + textYOffset + lineSpacing);
       });
 
@@ -299,26 +311,35 @@ export function FleetCanvasGrid({ fleets, cellSize = 80 }: FleetCanvasGridProps)
       list.forEach(({ cell, fleet }) => {
         const textYOffset = isAggregated ? 18 : 14;
         const lineSpacing = isAggregated ? 16 : 14;
-        
+
         let subText = `${fleet.totalPowerOutput.toFixed(0)}W`;
         if (isAggregated) {
           subText = `${(fleet.totalPowerOutput / 1000).toFixed(1)}kW`;
         }
-        
+
         ctx.fillText(subText, cell.x + 6, cell.y + textYOffset + lineSpacing * 2);
-        
+
         if (isAggregated) {
           ctx.fillStyle = '#8b9bb4';
           ctx.fillText(
             `${fleet.activeCount}/${fleet.deviceCount} dev`,
             cell.x + 6,
-            cell.y + textYOffset + lineSpacing * 3
+            cell.y + textYOffset + lineSpacing * 3,
           );
           ctx.fillStyle = color; // Restore color
         }
       });
     });
-  }, [visibleCells, activeFleets, currentCellSize, hoveredIndex, width, height, viewportBounds, isAggregated]);
+  }, [
+    visibleCells,
+    activeFleets,
+    currentCellSize,
+    hoveredIndex,
+    width,
+    height,
+    viewportBounds,
+    isAggregated,
+  ]);
 
   useEffect(() => {
     draw();
@@ -405,7 +426,8 @@ export function FleetCanvasGrid({ fleets, cellSize = 80 }: FleetCanvasGridProps)
             </button>
           </div>
           <div className="text-xs text-gray-500 hidden md:block">
-            Use <kbd className="bg-gray-800 px-1 rounded text-gray-300">Ctrl + Scroll</kbd> to zoom in/out
+            Use <kbd className="bg-gray-800 px-1 rounded text-gray-300">Ctrl + Scroll</kbd> to zoom
+            in/out
           </div>
         </div>
       </div>

@@ -13,6 +13,12 @@ interface TelemetryChartProps {
   color?: string;
   height?: number;
   width?: number;
+  /** Full time range the chart represents (used for progressive rendering) */
+  totalTimeRange?: { start: number; end: number };
+  /** Time range currently being fetched (rendered as dimmed pending region) */
+  pendingRange?: { start: number; end: number } | null;
+  /** Whether data is still being loaded */
+  isLoading?: boolean;
 }
 
 const RING_CAPACITY = 10_000;
@@ -36,6 +42,9 @@ export function TelemetryChart({
   color = '#00ff88',
   height = 200,
   width = 600,
+  totalTimeRange,
+  pendingRange,
+  isLoading = false,
 }: TelemetryChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const ringRef = useRef<TelemetryDataPoint[]>(new Array(RING_CAPACITY));
@@ -46,7 +55,50 @@ export function TelemetryChart({
   const msgTimestamps = useRef<number[]>([]);
   const workerRef = useRef<Worker | null>(null);
   const rafRef = useRef(0);
+  const lastFrameTime = useRef(0);
+  const isPageVisible = useRef(true);
   const [range, setRange] = useState<{ min: number; max: number }>({ min: 0, max: 1 });
+  const [memoryInfo, setMemoryInfo] = useState<string | null>(null);
+
+  // Visibility change handler: pause/resume rAF loop
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      isPageVisible.current = document.visibilityState === 'visible';
+      if (isPageVisible.current) {
+        lastFullRedraw.current = 0; // Force full redraw on resume
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
+  // Dev-mode memory measurement
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'development') return;
+
+    const measure = async () => {
+      try {
+        const perf = performance as Performance & {
+          measureUserAgentSpecificMemory?: () => Promise<{ bytes: number }>;
+        };
+        if (typeof perf.measureUserAgentSpecificMemory === 'function') {
+          const result = await perf.measureUserAgentSpecificMemory();
+          const usedMB = ((result.bytes ?? 0) / 1_048_576).toFixed(2);
+          setMemoryInfo(`TelemetryChart memory: ${usedMB} MB`);
+        }
+      } catch {
+        // Not available in all browsers
+      }
+    };
+
+    const interval = setInterval(measure, 30_000);
+    measure();
+
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     workerRef.current = createWorker();
@@ -118,17 +170,57 @@ export function TelemetryChart({
       const ring = ringRef.current;
       const head = headRef.current;
       const count = countRef.current;
-
-      if (count < 2) return;
-      if (count > 1 && range.max === range.min && range.max === 0) return;
+      const padding = 20;
 
       const fullRedraw = now - lastFullRedraw.current >= FULL_REDRAW_MS;
 
       ctx.clearRect(0, 0, width, height);
+
+      // Draw pending/loading region (dimmed overlay) when data is still being fetched
+      if (pendingRange && totalTimeRange) {
+        const totalSpan = totalTimeRange.end - totalTimeRange.start || 1;
+        const pendingStartRatio = (pendingRange.start - totalTimeRange.start) / totalSpan;
+        const pendingEndRatio = (pendingRange.end - totalTimeRange.start) / totalSpan;
+        const px = padding + pendingStartRatio * (width - 2 * padding);
+        const pw = Math.max(2, (pendingEndRatio - pendingStartRatio) * (width - 2 * padding));
+
+        // Animated striped pattern for loading region
+        ctx.fillStyle = 'rgba(100, 100, 100, 0.15)';
+        ctx.fillRect(px, padding, pw, height - 2 * padding);
+
+        // Dashed border around pending region
+        ctx.save();
+        ctx.strokeStyle = 'rgba(150, 150, 150, 0.4)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        ctx.lineDashOffset = -(now / 50); // Animated dash
+        ctx.strokeRect(px, padding, pw, height - 2 * padding);
+        ctx.setLineDash([]);
+        ctx.restore();
+
+        // Loading label
+        ctx.fillStyle = 'rgba(200, 200, 200, 0.5)';
+        ctx.font = '10px monospace';
+        ctx.fillText('Loading...', px + 4, padding + 14);
+      }
+
+      if (count < 2) {
+        // Draw loading state text even with no data yet
+        if (isLoading && totalTimeRange) {
+          ctx.fillStyle = 'rgba(200, 200, 200, 0.6)';
+          ctx.font = '14px monospace';
+          ctx.textAlign = 'center';
+          ctx.fillText('Fetching telemetry data...', width / 2, height / 2);
+          ctx.textAlign = 'left';
+        }
+        return;
+      }
+
+      if (count > 1 && range.max === range.min && range.max === 0) return;
+
       ctx.strokeStyle = color;
       ctx.lineWidth = 2;
 
-      const padding = 20;
       const rng = range.max - range.min || 1;
 
       let startIdx = 0;
@@ -168,7 +260,7 @@ export function TelemetryChart({
       const latest = ring[(head + count - 1) % RING_CAPACITY] as TelemetryDataPoint;
       ctx.fillText(`${metric}: ${latest.value.toFixed(2)}`, padding, 20);
     },
-    [color, height, width, metric, range, sendToWorker],
+    [color, height, width, metric, range, sendToWorker, pendingRange, totalTimeRange, isLoading],
   );
 
   useEffect(() => {
@@ -176,6 +268,16 @@ export function TelemetryChart({
 
     const loop = (now: number) => {
       if (!running) return;
+      if (!isPageVisible.current) {
+        // Page hidden: keep looping but skip drawing to avoid wasted renders
+        rafRef.current = requestAnimationFrame(loop);
+        return;
+      }
+      if (lastFrameTime.current > 0 && now - lastFrameTime.current > 5000) {
+        // Tab was hidden for >5s; force full redraw on resume
+        lastFullRedraw.current = 0;
+      }
+      lastFrameTime.current = now;
       draw(now);
       rafRef.current = requestAnimationFrame(loop);
     };
@@ -185,10 +287,18 @@ export function TelemetryChart({
     return () => {
       running = false;
       cancelAnimationFrame(rafRef.current);
+      rafRef.current = 0;
     };
   }, [draw]);
 
   return (
-    <canvas ref={canvasRef} style={{ width, height }} aria-label={`${metric} telemetry chart`} />
+    <div className="relative">
+      <canvas ref={canvasRef} style={{ width, height }} aria-label={`${metric} telemetry chart`} />
+      {memoryInfo && (
+        <div className="absolute bottom-1 right-2 rounded bg-black/70 px-2 py-0.5 text-[10px] text-gray-400 font-mono">
+          {memoryInfo}
+        </div>
+      )}
+    </div>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect, useCallback } from 'react';
+import { useRef, useEffect, useCallback, useState } from 'react';
 
 interface MetricsFrame {
   timestamp: number;
@@ -29,6 +29,49 @@ export function LiveMetricsCanvas({ stream, metrics, height = 300 }: LiveMetrics
   const msgTimestamps = useRef<number[]>([]);
   const rangeCache = useRef<Map<string, { min: number; max: number }>>(new Map());
   const rafRef = useRef(0);
+  const lastFrameTime = useRef(0);
+  const isPageVisible = useRef(true);
+  const [memoryInfo, setMemoryInfo] = useState<string | null>(null);
+
+  // Visibility change handler: pause/resume rAF loop
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      isPageVisible.current = document.visibilityState === 'visible';
+      if (isPageVisible.current) {
+        lastFullRedraw.current = 0; // Force full redraw on resume
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
+  // Dev-mode memory measurement
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'development') return;
+
+    const measure = async () => {
+      try {
+        const perf = performance as Performance & {
+          measureUserAgentSpecificMemory?: () => Promise<{ bytes: number }>;
+        };
+        if (typeof perf.measureUserAgentSpecificMemory === 'function') {
+          const result = await perf.measureUserAgentSpecificMemory();
+          const usedMB = ((result.bytes ?? 0) / 1_048_576).toFixed(2);
+          setMemoryInfo(`LiveMetricsCanvas memory: ${usedMB} MB`);
+        }
+      } catch {
+        // Not available in all browsers
+      }
+    };
+
+    const interval = setInterval(measure, 30_000);
+    measure();
+
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     const points = stream;
@@ -168,6 +211,16 @@ export function LiveMetricsCanvas({ stream, metrics, height = 300 }: LiveMetrics
 
     const loop = (now: number) => {
       if (!running) return;
+      if (!isPageVisible.current) {
+        // Page hidden: keep looping but skip drawing to avoid wasted renders
+        rafRef.current = requestAnimationFrame(loop);
+        return;
+      }
+      if (lastFrameTime.current > 0 && now - lastFrameTime.current > 5000) {
+        // Tab was hidden for >5s; force full redraw on resume
+        lastFullRedraw.current = 0;
+      }
+      lastFrameTime.current = now;
       drawFrame(now);
       rafRef.current = requestAnimationFrame(loop);
     };
@@ -177,12 +230,18 @@ export function LiveMetricsCanvas({ stream, metrics, height = 300 }: LiveMetrics
     return () => {
       running = false;
       cancelAnimationFrame(rafRef.current);
+      rafRef.current = 0;
     };
   }, [drawFrame]);
 
   return (
     <div ref={containerRef} className="relative w-full">
       <canvas ref={canvasRef} className="block w-full" aria-label="Live metrics canvas" />
+      {memoryInfo && (
+        <div className="absolute bottom-1 right-2 rounded bg-black/70 px-2 py-0.5 text-[10px] text-gray-400 font-mono">
+          {memoryInfo}
+        </div>
+      )}
     </div>
   );
 }

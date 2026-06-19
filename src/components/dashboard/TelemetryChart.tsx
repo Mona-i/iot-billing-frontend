@@ -13,6 +13,8 @@ interface TelemetryChartProps {
   color?: string;
   height?: number;
   width?: number;
+  /** 0-1 progress for chunked history loading. When < 1, a dimmed gradient is drawn over the pending region. */
+  loadingProgress?: number;
 }
 
 const RING_CAPACITY = 10_000;
@@ -36,6 +38,7 @@ export function TelemetryChart({
   color = '#00ff88',
   height = 200,
   width = 600,
+  loadingProgress,
 }: TelemetryChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const ringRef = useRef<TelemetryDataPoint[]>(new Array(RING_CAPACITY));
@@ -46,6 +49,7 @@ export function TelemetryChart({
   const msgTimestamps = useRef<number[]>([]);
   const workerRef = useRef<Worker | null>(null);
   const rafRef = useRef(0);
+  const prevDataLenRef = useRef(0);
   const [range, setRange] = useState<{ min: number; max: number }>({ min: 0, max: 1 });
 
   useEffect(() => {
@@ -68,20 +72,27 @@ export function TelemetryChart({
 
   useEffect(() => {
     const points = data;
+    const prevLen = prevDataLenRef.current;
+    // Only append new points that haven't been added to the ring buffer yet
+    const newPoints = points.slice(prevLen);
+    prevDataLenRef.current = points.length;
+
+    if (newPoints.length === 0) return;
+
     const ring = ringRef.current;
     const head = headRef.current;
     const count = countRef.current;
 
-    for (let i = 0; i < points.length; i++) {
-      const point = points[i] as TelemetryDataPoint;
+    for (let i = 0; i < newPoints.length; i++) {
+      const point = newPoints[i] as TelemetryDataPoint;
       const idx = (head + count + i) % RING_CAPACITY;
       ring[idx] = point;
     }
-    const newCount = Math.min(count + points.length, RING_CAPACITY);
+    const newCount = Math.min(count + newPoints.length, RING_CAPACITY);
     const newHead =
       newCount < RING_CAPACITY
         ? headRef.current
-        : (headRef.current + points.length) % RING_CAPACITY;
+        : (headRef.current + newPoints.length) % RING_CAPACITY;
     headRef.current = newHead;
     countRef.current = newCount;
 
@@ -167,8 +178,32 @@ export function TelemetryChart({
       ctx.font = '12px monospace';
       const latest = ring[(head + count - 1) % RING_CAPACITY] as TelemetryDataPoint;
       ctx.fillText(`${metric}: ${latest.value.toFixed(2)}`, padding, 20);
+
+      // Draw loading gradient for progressive chunked history
+      if (loadingProgress !== undefined && loadingProgress < 1 && count > 1) {
+        const loadedX = padding + loadingProgress * (width - 2 * padding);
+        const gradient = ctx.createLinearGradient(loadedX, 0, width, 0);
+        gradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
+        gradient.addColorStop(0.3, 'rgba(0, 0, 0, 0.15)');
+        gradient.addColorStop(1, 'rgba(0, 0, 0, 0.4)');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(loadedX, 0, width - loadedX, height);
+
+        // Loading dots animation
+        const dotX = loadedX + 30;
+        const dotY = height / 2;
+        const dotRadius = 3;
+        const dotSpacing = 12;
+        const phase = Math.floor(now / 400) % 3;
+        for (let d = 0; d < 3; d++) {
+          ctx.fillStyle = d === phase ? '#ffffff' : 'rgba(255, 255, 255, 0.3)';
+          ctx.beginPath();
+          ctx.arc(dotX + d * dotSpacing, dotY, dotRadius, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
     },
-    [color, height, width, metric, range, sendToWorker],
+    [color, height, width, metric, range, sendToWorker, loadingProgress],
   );
 
   useEffect(() => {

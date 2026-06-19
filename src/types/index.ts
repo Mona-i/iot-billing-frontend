@@ -68,6 +68,27 @@ export interface PaginatedResponse<T> {
   hasNextPage: boolean;
 }
 
+export interface TelemetryHistoryPoint {
+  timestamp: number;
+  value: number;
+  deviceId?: string;
+}
+
+export interface ProcessedHistoryChunk {
+  averages: number[];
+  totals: number[];
+  timestamps: number[];
+  startTime: number;
+  endTime: number;
+}
+
+export interface ChunkedHistoryState {
+  data: TelemetryHistoryPoint[];
+  isLoading: boolean;
+  progress: number;
+  error: Error | null;
+}
+
 export interface Web3AuthSession {
   nonce: string;
   signedChallenge: string;

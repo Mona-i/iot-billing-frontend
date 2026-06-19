@@ -12,12 +12,18 @@ export interface UseChunkedHistoryOptions {
   startTime: number;
   endTime: number;
   chunkSizeMs?: number;
+  /** Whether the hook should start fetching (default: true) */
+  enabled?: boolean;
 }
 
 export interface UseChunkedHistoryResult {
+  /** Alias for progressiveData — accumulated data points so far */
+  data: TelemetryDataPoint[];
   progressiveData: TelemetryDataPoint[];
   isLoading: boolean;
   pendingRange: { start: number; end: number } | null;
+  /** 0-1 progress fraction: chunks fetched / total chunks */
+  progress: number;
   error: Error | null;
   cancel: () => void;
 }
@@ -36,10 +42,12 @@ export function useChunkedHistory({
   startTime,
   endTime,
   chunkSizeMs = DEFAULT_CHUNK_SIZE_MS,
+  enabled = true,
 }: UseChunkedHistoryOptions): UseChunkedHistoryResult {
   const [progressiveData, setProgressiveData] = useState<TelemetryDataPoint[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [pendingRange, setPendingRange] = useState<{ start: number; end: number } | null>(null);
+  const [progress, setProgress] = useState(0);
   const [error, setError] = useState<Error | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const workerRef = useRef<Worker | null>(null);
@@ -111,7 +119,7 @@ export function useChunkedHistory({
 
   // Main fetch loop: sequential async iteration over chunks
   useEffect(() => {
-    if (deviceIds.length === 0 || startTime >= endTime) return;
+    if (!enabled || deviceIds.length === 0 || startTime >= endTime) return;
 
     let cancelled = false;
 
@@ -135,6 +143,8 @@ export function useChunkedHistory({
       if (!cancelled) setIsLoading(true);
 
       const accumulated: TelemetryDataPoint[] = [];
+      let completedChunks = 0;
+      const totalChunks = chunks.length;
 
       for (const chunk of chunks) {
         if (cancelled || abortController.signal.aborted) break;
@@ -147,19 +157,28 @@ export function useChunkedHistory({
 
           // Accumulate data progressively
           accumulated.push(...data);
-          if (!cancelled) setProgressiveData([...accumulated]);
+          completedChunks++;
+          if (!cancelled) {
+            setProgressiveData([...accumulated]);
+            setProgress(totalChunks > 0 ? completedChunks / totalChunks : 1);
+          }
 
           // Offload range computation to worker to keep main thread free
           computeRangeInWorker(data);
         } catch (err: unknown) {
           if (isAbortError(err)) break;
-          if (!cancelled) setError(err instanceof Error ? err : new Error(String(err)));
+          completedChunks++;
+          if (!cancelled) {
+            setProgress(totalChunks > 0 ? completedChunks / totalChunks : 1);
+            setError(err instanceof Error ? err : new Error(String(err)));
+          }
           // Continue with next chunk on error — don't block the pipeline
         }
       }
 
       if (!cancelled && !abortController.signal.aborted) {
         setPendingRange(null);
+        setProgress(1);
         setIsLoading(false);
       }
     };
@@ -170,18 +189,21 @@ export function useChunkedHistory({
       cancelled = true;
       abortController.abort();
     };
-  }, [deviceIds, startTime, endTime, generateChunks, fetchChunk, computeRangeInWorker]);
+  }, [deviceIds, startTime, endTime, enabled, generateChunks, fetchChunk, computeRangeInWorker]);
 
   const cancel = useCallback(() => {
     abortRef.current?.abort();
     setIsLoading(false);
     setPendingRange(null);
+    setProgress(0);
   }, []);
 
   return {
+    data: progressiveData,
     progressiveData,
     isLoading,
     pendingRange,
+    progress,
     error,
     cancel,
   };
